@@ -1,0 +1,80 @@
+import settings
+import json
+import glob
+import psycopg2
+import os
+
+
+def database_connection():
+    connection = psycopg2.connect(
+        user=os.getenv("PG_USER"),
+        password=os.getenv("PG_PASSWORD"),
+        host=os.getenv("PG_HOST"),
+        port=os.getenv("PG_PORT"),
+        database=os.getenv("PG_DATABASE"),
+    )
+    cursor = connection.cursor()
+    return connection, cursor
+
+
+def load_all_surveys():
+    paths = glob.glob("surveys/*.json")
+    for path in paths:
+        _, key = path.split("_")
+        key, _ = key.split(".")
+        _SURVEYS[key] = load_survey(path)
+
+
+def load_survey(path):
+    with open(path) as json_file:
+        data = json.load(json_file)
+    return data
+
+
+def save_answer(
+    bot_name: str, user_id: int, question_number: int, answer: str
+):
+    try:
+        colname = f"question_{question_number+1}"
+        sql = f"""
+        INSERT INTO survey_{bot_name} (user_id, {colname})
+        VALUES
+        (
+            %s,
+            %s
+        ) 
+        ON CONFLICT (user_id)
+        DO
+            UPDATE
+            SET {colname} = EXCLUDED.{colname};
+        """
+        cursor.execute(sql, (user_id, answer))
+        connection.commit()
+        count = cursor.rowcount
+        print(
+            count, f"Record inserted successfully into survey_{bot_name} table"
+        )
+    except (Exception, psycopg2.Error) as error:
+        if connection:
+            print(
+                f"Failed to insert record into survey_{bot_name} table", error
+            )
+
+
+def is_answered(user_id: int, bot_name: str):
+    sql = f"select exists(select 1 from survey_{bot_name} where user_id={user_id});"
+    cursor.execute(sql)
+    record = cursor.fetchone()[0]
+    return record
+
+
+def close_connection():
+    if connection:
+        cursor.close()
+        connection.close()
+        print("PostgreSQL connection is closed")
+
+
+_SURVEYS = dict()
+load_all_surveys()
+connection, cursor = database_connection()
