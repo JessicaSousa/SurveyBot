@@ -120,7 +120,7 @@ def start(update, context):
                             [
                                 InlineKeyboardButton(
                                     "Refazer",
-                                    url=f"https://t.me/avaliacao_bot?start={bot_name}_v2",
+                                    url=f"https://t.me/questionario_bot?start={bot_name}_v2",
                                 )
                             ]
                         ]
