@@ -2,7 +2,7 @@
 
 Bot questionário utilizado para permitir os usuários avaliarem meus bots.
 
-<img src='output_hZtnxI.gif' align="center" height="400"/>
+<img src='output_hZtnxI.gif' alt="" align="center" height="400"/>
 
 ## Template
 
