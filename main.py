@@ -4,6 +4,7 @@ import os
 import logging
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InputMediaAnimation, InputMediaVideo, InputMediaPhoto
 from telegram.ext import (
     Updater,
     CommandHandler,
@@ -181,19 +182,31 @@ def end(update, context):
                 )
                 if "has_answer" in context.bot_data[poll_id]:
                     print(context.bot_data[poll_id]["answer_string"])
-                    # user_id = query.message.chat.id
-                    # utils.save_answer(
-                    #     context.user_data["bot_name"],
-                    #     user_id,
-                    #     context.bot_data[poll_id]["question_id"],
-                    #     context.bot_data[poll_id]["answer_string"],
-                    # )
+                    user_id = query.message.chat.id
+                    utils.save_answer(
+                        context.user_data["bot_name"],
+                        user_id,
+                        context.bot_data[poll_id]["question_id"],
+                        context.bot_data[poll_id]["answer_string"],
+                    )
         else:
             finished = False
             query.answer("Campos obrigatórios não preenchidos!")
     if finished:
         query.answer()
         query.edit_message_reply_markup(None)
+
+        for _, values in context.user_data["regular_answers"].items():
+            question_id, answer_string = values[0], values[1]
+            print(question_id, answer_string)
+            user_id = query.message.chat.id
+            utils.save_answer(
+                context.user_data["bot_name"],
+                user_id,
+                question_id,
+                answer_string,
+            )
+
         context.bot.send_message(update.effective_user.id, "Questionário finalizado!")
         return ConversationHandler.END
 
@@ -240,9 +253,72 @@ def receive_poll_answer(update, context):
     context.bot_data[poll_id]["answer_string"] = answer_string
 
 
+def help_button(update, context):
+    query = update.callback_query
+    query.answer()
+    _, hid = query.data.split("_")
+    hid = int(hid)
+
+    keyboard = [[]]
+    next_button = InlineKeyboardButton("próximo", callback_data=f"help_{hid+1}")
+    prev_button = InlineKeyboardButton("anterior", callback_data=f"help_{hid-1}")
+    media = None
+    if hid == 0:
+        caption = ("Há três tipos de perguntas no bot, sendo elas:\n\n"
+            "▪️ *múltiplas escolhas*\n▪️ *única escolha*\n▪️ *texto livre*.\n\nTodas "
+            "as respostas _são editáveis antes da finalização_ do questionário."
+        )
+        media = InputMediaAnimation(
+                "CgACAgEAAxkBAAIDz165k3F3dOyCpA0NzXKTkbk2RT_rAAKfAAPJItBFxyufgHgzykAZBA",
+                caption=caption,
+                parse_mode="markdown"
+            )
+        keyboard[0].append(next_button)
+    elif hid == 1:
+        caption = ("As perguntas podem ser obrigatórias ou opcionais, as "
+            "*obrigatórias estão marcadas com estrela*."
+        )
+        media = InputMediaPhoto(
+                "AgACAgEAAxkBAAIDjF65gy5cp6uTnlUBypOFFJ-dDw5mAAJRqDEbySLQRQ8xPAq4fpQp371uBgAEAQADAgADeAADe5kCAAEZBA",
+                caption=caption,
+                parse_mode="markdown"
+            )
+        keyboard[0].append(prev_button)
+        keyboard[0].append(next_button)
+    elif hid == 2:
+        media = InputMediaVideo(
+                "BAACAgEAAxkBAAIDfF65f7no-7Wmzex-mYwXmgR-EGuZAAIpAQACvlPJRVufPM2G1aFZGQQ",
+                caption="Vídeo demonstrativo de como utilizar o bot.",
+                parse_mode="markdown"
+        )
+        keyboard[0].append(prev_button)
+
+    if media:
+        context.bot.edit_message_media(
+                query.message.chat.id,
+                query.message.message_id,
+                media=media,
+                reply_markup=InlineKeyboardMarkup(keyboard),
+            )
+
+
 def help(update, context):
     """Send a message when the command /help is issued."""
-    update.message.reply_text("Help!")
+    keyboard = [
+        [
+            InlineKeyboardButton("próximo", callback_data="help_1"), 
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_animation(
+            "CgACAgEAAxkBAAIDz165k3F3dOyCpA0NzXKTkbk2RT_rAAKfAAPJItBFxyufgHgzykAZBA",
+            #open('tipos.gif', 'rb'),
+            caption=("Há três tipos de perguntas no bot, sendo elas:\n\n"
+            "▪️ *múltiplas escolhas*\n▪️ *única escolha*\n▪️ *texto livre*.\n\nTodas "
+            "as respostas _são editáveis antes da finalização_ do questionário."),
+            reply_markup=reply_markup,
+            parse_mode="markdown",
+    )
 
 
 def main():
@@ -254,6 +330,7 @@ def main():
 
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(PollAnswerHandler(receive_poll_answer))
+    dp.add_handler(CallbackQueryHandler(help_button, pattern="^help_[0-9]$"))
 
     # Setup conversation handler with the states FIRST and SECOND
     # Use the pattern parameter to pass CallbackQueries with specific
