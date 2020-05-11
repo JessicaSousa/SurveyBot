@@ -1,4 +1,4 @@
-# <img title="" src="logo.png" alt="" align="left" height="60">uestionário Bot
+# <img title="" src="logo.png" alt="" align="left" height="80"> Questionário Bot
 
 Bot questionário utilizado para permitir os usuários avaliarem meus bots.
 
