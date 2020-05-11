@@ -1,12 +1,6 @@
 {
     "questions": [
         {
-            "text": "Questão com resposta livre.",
-            "options": [],
-            "allows_multiple_answers": false,
-            "required": true
-        },
-        {
             "text": "Questão com uma única escolha.",
             "options": [
                 "1",
@@ -37,6 +31,12 @@
             ],
             "allows_multiple_answers": true,
             "required": false
+        },
+        {
+            "text": "Questão com resposta livre.",
+            "options": [],
+            "allows_multiple_answers": false,
+            "required": true
         }
     ]
 }

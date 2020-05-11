@@ -17,13 +17,13 @@ from telegram.ext import (
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO,
 )
 
 logger = logging.getLogger(__name__)
 
 CLOSED, OPEN, REGULAR_ANSWER = range(3)
+
 
 def send_question(update, context):
     next_question = "survey_finish"
@@ -31,28 +31,31 @@ def send_question(update, context):
     current_survey = context.user_data["current_survey"]
     list_size = len(current_survey)
 
+    button_text = "⏭️ Próxima"
+
     callback_data = next_question
     if question_id + 1 < list_size:
-        if len(current_survey[question_id+1]["options"]) > 1:
+        if len(current_survey[question_id + 1]["options"]) > 1:
             next_question = "closed"
         else:
             next_question = "open"
         callback_data = f"{next_question}_{question_id + 1}"
 
-    keyboard = [
-        [
-            InlineKeyboardButton(
-                "✅ Próxima", callback_data=callback_data
-            )
-        ]
-    ]
+    if next_question == "survey_finish":
+        button_text = "✅ Finalizar!"
+
+    keyboard = [[InlineKeyboardButton(button_text, callback_data=callback_data)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.message and not update.message.text.startswith("/start"):
         bot_message = update.message.reply_text(
-            f"Sua resposta: {update.message.text}",reply_markup=reply_markup
+            f"Sua resposta: {update.message.text}", reply_markup=reply_markup
         )
         context.user_data[update.message.message_id] = bot_message.message_id
         context.user_data[bot_message.message_id] = reply_markup
+        context.user_data["regular_answers"][update.message.message_id] = [
+            question_id,
+            update.message.text,
+        ]
     elif question_id < list_size:
         template = current_survey[question_id]
         question = template["text"]
@@ -78,14 +81,14 @@ def send_question(update, context):
                     "message_id": message.message_id,
                     "chat_id": update.effective_chat.id,
                     "required": template["required"],
+                    "open": True,
                 }
             }
             context.user_data["polls"].append(message.poll.id)
             context.bot_data.update(payload)
         else:
-           context.bot.send_message(update.effective_user.id, question)
+            context.bot.send_message(update.effective_user.id, question)
     return next_question
-
 
 
 def start(update, context):
@@ -94,12 +97,11 @@ def start(update, context):
         if bot_name in utils._SURVEYS:
             # # Checar se o usuário já respondeu este survey
             # if not utils.is_answered(update.message.from_user.id, bot_name):
+            context.user_data["regular_answers"] = {}
             context.user_data["polls"] = []
             context.user_data["question_id"] = 0
             context.user_data["bot_name"] = bot_name
-            context.user_data["current_survey"] = utils._SURVEYS[bot_name][
-                "questions"
-            ]
+            context.user_data["current_survey"] = utils._SURVEYS[bot_name]["questions"]
             N = len(utils._SURVEYS[bot_name]["questions"])
             update.message.reply_text(
                 (
@@ -112,12 +114,13 @@ def start(update, context):
             # enviar primeira pergunta
             answer_type = send_question(update, context)
             if context.user_data["current_survey"][0]["options"]:
-                if answer_type=="closed":
+                if answer_type == "closed":
                     return CLOSED
-                elif answer_type=="open":
+                elif answer_type == "open":
                     return OPEN
             else:
                 return REGULAR_ANSWER
+
 
 # Função para exibir perguntas com duas ou mais escolhas
 def question_with_options(update, context):
@@ -131,7 +134,7 @@ def question_with_options(update, context):
     _, current_id = query.data.split("_")
     context.user_data["question_id"] = int(current_id)
     answer_type = send_question(update, context)
-    if answer_type=="open":
+    if answer_type == "open":
         return OPEN
     else:
         return CLOSED
@@ -149,12 +152,12 @@ def question_without_options(update, context):
     context.user_data["question_id"] = int(current_id)
     send_question(update, context)
     return REGULAR_ANSWER
-    
+
 
 # Capturar resposta do usuário
 def regular_answer(update, context):
     answer_type = send_question(update, context)
-    if answer_type=="open":
+    if answer_type == "open":
         return OPEN
     else:
         return CLOSED
@@ -162,21 +165,39 @@ def regular_answer(update, context):
 
 def end(update, context):
     query = update.callback_query
-    query.answer()
-    query.edit_message_reply_markup(None)
-    if query.message.message_id in context.user_data:
-        context.user_data[query.message.message_id] = None
-
+    finished = True
     # Encerrar todas as polls da conversa:
     for poll_id in context.user_data["polls"]:
-        context.bot.stop_poll(
-            context.bot_data[poll_id]["chat_id"],
-            context.bot_data[poll_id]["message_id"],
-        )
-    context.bot.send_message(update.effective_user.id, "Questionário finalizado!")
-    return ConversationHandler.END
- 
-            
+        required = context.bot_data[poll_id]["required"]
+        if (
+            "has_answer" in context.bot_data[poll_id]
+            and context.bot_data[poll_id]["has_answer"]
+        ) or not required:
+            if context.bot_data[poll_id]["open"]:
+                context.bot_data[poll_id]["open"] = False
+                context.bot.stop_poll(
+                    context.bot_data[poll_id]["chat_id"],
+                    context.bot_data[poll_id]["message_id"],
+                )
+                if "has_answer" in context.bot_data[poll_id]:
+                    print(context.bot_data[poll_id]["answer_string"])
+                    # user_id = query.message.chat.id
+                    # utils.save_answer(
+                    #     context.user_data["bot_name"],
+                    #     user_id,
+                    #     context.bot_data[poll_id]["question_id"],
+                    #     context.bot_data[poll_id]["answer_string"],
+                    # )
+        else:
+            finished = False
+            query.answer("Campos obrigatórios não preenchidos!")
+    if finished:
+        query.answer()
+        query.edit_message_reply_markup(None)
+        context.bot.send_message(update.effective_user.id, "Questionário finalizado!")
+        return ConversationHandler.END
+
+
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -188,11 +209,14 @@ def edited(update, context):
         message_id = update.edited_message.message_id
         message_bot_id = context.user_data[message_id]
         reply_markup = context.user_data[message_bot_id]
-        context.bot.edit_message_text(chat_id=update.edited_message.chat.id, 
-                          message_id=message_bot_id,
-                          text=f"Sua resposta: {update.edited_message.text}",
-                          reply_markup=reply_markup)
-        
+        context.bot.edit_message_text(
+            chat_id=update.edited_message.chat.id,
+            message_id=message_bot_id,
+            text=f"Sua resposta: {update.edited_message.text}",
+            reply_markup=reply_markup,
+        )
+        # Atualizar resposta do usuário:
+        context.user_data["regular_answers"][message_id][1] = update.edited_message.text
 
 
 def receive_poll_answer(update, context):
@@ -228,7 +252,6 @@ def main():
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(PollAnswerHandler(receive_poll_answer))
 
@@ -239,24 +262,23 @@ def main():
     # $ means "end of line/string"
     # So ^ABC$ will only allow 'ABC'
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
+        entry_points=[CommandHandler("start", start)],
         states={
             CLOSED: [
-                CallbackQueryHandler(question_with_options, pattern='^closed_[0-9]+$'),
-                CallbackQueryHandler(end, pattern='^survey_finish$'),
+                CallbackQueryHandler(question_with_options, pattern="^closed_[0-9]+$"),
+                CallbackQueryHandler(end, pattern="^survey_finish$"),
             ],
             OPEN: [
-                CallbackQueryHandler(question_without_options, pattern='^open_[0-9]+$'),
-                
+                CallbackQueryHandler(question_without_options, pattern="^open_[0-9]+$"),
             ],
             REGULAR_ANSWER: [
                 MessageHandler(Filters.regex("^(?!/).*"), regular_answer),
-            ]
-
+            ],
         },
         fallbacks=[
-        CommandHandler('start', start),
-        MessageHandler(Filters.regex("^(?!/).*"), edited)],
+            CommandHandler("start", start),
+            MessageHandler(Filters.regex("^(?!/).*"), edited),
+        ],
     )
 
     # Add ConversationHandler to dispatcher that will be used for handling
@@ -275,5 +297,5 @@ def main():
     updater.idle()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
