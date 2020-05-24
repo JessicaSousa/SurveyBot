@@ -104,43 +104,58 @@ def start(update, context):
     if context.args:
         bot_name = context.args[0]
         repeat = None
-        if bot_name.startswith("repeat-"):
-            repeat, bot_name = bot_name.split("-")
+        survey = None
+        if bot_name.startswith("survey-repeat"):
+            survey, repeat, bot_name = bot_name.split("-")
+        elif bot_name.startswith("survey-"):
+            survey, bot_name = bot_name.split("-")
         if bot_name in utils._SURVEYS:
-            #  Checar se o usuário já respondeu este survey
-            if not utils.is_answered(update.message.from_user.id, bot_name) or repeat:
-                context.user_data["regular_answers"] = {}
-                context.user_data["polls"] = []
-                context.user_data["question_id"] = 0
-                context.user_data["bot_name"] = bot_name
-                context.user_data["current_survey"] = utils._SURVEYS[bot_name]["questions"]
-                N = len(utils._SURVEYS[bot_name]["questions"])
-                update.message.reply_text(
-                    (
-                        f"Olá, {update.message.from_user.first_name}, o bot "
-                        f"@iqa_imdbot te encaminhou para que possa avaliá-lo. Eu "
-                        f"irei lhe fazer algumas perguntas, serão {N} perguntas "
-                        "no total."
-                    )
-                )
-                # enviar primeira pergunta
-                answer_type = send_question(update, context)
-                if context.user_data["current_survey"][0]["options"]:
-                    if answer_type == "closed":
-                        return CLOSED
-                    elif answer_type == "open":
-                        return OPEN
+            context.user_data["regular_answers"] = {}
+            context.user_data["polls"] = []
+            context.user_data["question_id"] = 0
+            context.user_data["bot_name"] = bot_name
+            context.user_data["current_survey"] = utils._SURVEYS[bot_name]["questions"]
+            if survey:
+                #  Checar se o usuário já respondeu este survey
+                answered = utils.is_answered(update.message.from_user.id, bot_name)
+                if not answered or repeat:
+                    # enviar primeira pergunta
+                    answer_type = send_question(update, context)
+                    if context.user_data["current_survey"][0]["options"]:
+                        if answer_type == "closed":
+                            return CLOSED
+                        elif answer_type == "open":
+                            return OPEN
+                    else:
+                        return REGULAR_ANSWER
                 else:
-                    return REGULAR_ANSWER
-            else:
-                url = helpers.create_deep_linked_url(context.bot.get_me().username, "repeat-imdbot")
-                keyboard = InlineKeyboardMarkup.from_button(
-                    InlineKeyboardButton(text='Refazer!', url=url)
-                )
-                update.message.reply_text(
-                    "Você já respondeu esse questionário, se desejar refazê-lo clique no botão abaixo.",
-                    reply_markup = keyboard
+                    url = helpers.create_deep_linked_url(context.bot.get_me().username, "survey-repeat-imdbot")
+                    keyboard = InlineKeyboardMarkup.from_button(
+                        InlineKeyboardButton(text='Refazer!', url=url)
                     )
+                    update.message.reply_text(
+                        "Você já respondeu esse questionário, se desejar refazê-lo clique no botão abaixo.",
+                        reply_markup = keyboard
+                        )
+            else:
+                N = len(utils._SURVEYS[bot_name]["questions"])
+                url = helpers.create_deep_linked_url(context.bot.get_me().username, "survey-imdbot")
+                keyboard = InlineKeyboardMarkup.from_button(
+                    InlineKeyboardButton(text='Iniciar questionário!', url=url)
+                )
+                update.message.reply_photo(
+                    "AgACAgEAAxkBAAEEtpteytLiPEbuXMv-wl6dGeyRv-JOygAC3qgxG_zsWEY7TTxZPXcxG7CZEjAABAEAAwIAA3gAAwKvAAIZBA",
+                    caption=(
+                        "Olá, eu sou o Questionário Bot, eu estou aqui para enviar "
+                        "algumas perguntas relacionadas ao @iqa_imdbot, eu gostaria "
+                        "de ter a sua ajuda para saber se ele se saiu bem. "
+                        "Se você tiver dúvidas de como funciona o questionário, eu "
+                        "sugiro que você verifique instruções em /help. "
+                        f"Este questionário tem o total de {N} perguntas."
+                    ),
+                    reply_markup = keyboard
+                )
+            
         else:
             update.message.reply_text("Nenhum questionário encontrado com este nome.")
     else:
