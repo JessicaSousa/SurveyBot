@@ -3,8 +3,14 @@ import utils
 import os
 import logging
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram import InputMediaAnimation, InputMediaVideo, InputMediaPhoto
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputMediaAnimation,
+    InputMediaVideo,
+    InputMediaPhoto
+)
+
 from telegram.ext import (
     Updater,
     CommandHandler,
@@ -14,6 +20,8 @@ from telegram.ext import (
     PollAnswerHandler,
     CallbackQueryHandler,
 )
+
+from telegram.utils import helpers
 
 
 # Enable logging
@@ -95,32 +103,48 @@ def send_question(update, context):
 def start(update, context):
     if context.args:
         bot_name = context.args[0]
+        repeat = None
+        if bot_name.startswith("repeat-"):
+            repeat, bot_name = bot_name.split("-")
         if bot_name in utils._SURVEYS:
-            # # Checar se o usuário já respondeu este survey
-            # if not utils.is_answered(update.message.from_user.id, bot_name):
-            context.user_data["regular_answers"] = {}
-            context.user_data["polls"] = []
-            context.user_data["question_id"] = 0
-            context.user_data["bot_name"] = bot_name
-            context.user_data["current_survey"] = utils._SURVEYS[bot_name]["questions"]
-            N = len(utils._SURVEYS[bot_name]["questions"])
-            update.message.reply_text(
-                (
-                    f"Olá, {update.message.from_user.first_name}, o bot "
-                    f"@{bot_name} te encaminhou para que possa avaliá-lo. Eu "
-                    f"irei lhe fazer algumas perguntas, serão {N} perguntas "
-                    "no total."
+            #  Checar se o usuário já respondeu este survey
+            if not utils.is_answered(update.message.from_user.id, bot_name) or repeat:
+                context.user_data["regular_answers"] = {}
+                context.user_data["polls"] = []
+                context.user_data["question_id"] = 0
+                context.user_data["bot_name"] = bot_name
+                context.user_data["current_survey"] = utils._SURVEYS[bot_name]["questions"]
+                N = len(utils._SURVEYS[bot_name]["questions"])
+                update.message.reply_text(
+                    (
+                        f"Olá, {update.message.from_user.first_name}, o bot "
+                        f"@iqa_imdbot te encaminhou para que possa avaliá-lo. Eu "
+                        f"irei lhe fazer algumas perguntas, serão {N} perguntas "
+                        "no total."
+                    )
                 )
-            )
-            # enviar primeira pergunta
-            answer_type = send_question(update, context)
-            if context.user_data["current_survey"][0]["options"]:
-                if answer_type == "closed":
-                    return CLOSED
-                elif answer_type == "open":
-                    return OPEN
+                # enviar primeira pergunta
+                answer_type = send_question(update, context)
+                if context.user_data["current_survey"][0]["options"]:
+                    if answer_type == "closed":
+                        return CLOSED
+                    elif answer_type == "open":
+                        return OPEN
+                else:
+                    return REGULAR_ANSWER
             else:
-                return REGULAR_ANSWER
+                url = helpers.create_deep_linked_url(context.bot.get_me().username, "repeat-imdbot")
+                keyboard = InlineKeyboardMarkup.from_button(
+                    InlineKeyboardButton(text='Refazer!', url=url)
+                )
+                update.message.reply_text(
+                    "Você já respondeu esse questionário, se desejar refazê-lo clique no botão abaixo.",
+                    reply_markup = keyboard
+                    )
+        else:
+            update.message.reply_text("Nenhum questionário encontrado com este nome.")
+    else:
+        update.message.reply_text("Você não pode começar uma conversa com esse bot, é necessário o @iqa_imdbot redirecionar você.")
 
 
 # Função para exibir perguntas com duas ou mais escolhas

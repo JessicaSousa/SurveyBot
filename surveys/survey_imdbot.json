@@ -1,39 +1,68 @@
 {
     "questions": [
         {
-            "text": "Questão com uma única escolha.",
+            "text": "De qual região do país você é?",
             "options": [
-                "1",
-                "2",
-                "3",
-                "4",
-                "5",
-                "6",
-                "7",
-                "8",
-                "9",
-                "10"
+                "🇧🇷 Norte",
+                "🇧🇷 Nordeste",
+                "🇧🇷 Centro Oeste",
+                "🇧🇷 Sudeste",
+                "🇧🇷 Sul",
+                "Fora do país"
+            ],
+            "allows_multiple_answers": false,
+            "required": false
+        },
+        {
+            "text": "1. As funcionalidades estão apresentadas de modo amigável.",
+            "options": [
+                "😃 concordo fortemente",
+                "🙂 concordo",
+                "😐 neutro",
+                "😟 discordo",
+                "😢 discordo fortemente"
             ],
             "allows_multiple_answers": false,
             "required": true
         },
         {
-            "text": "Questão com múltiplas escolhas.",
+            "text": "2. As exibição de sugestões é apresentada de forma compreensível.",
             "options": [
-                "Op 1",
-                "Op 2",
-                "Op 3",
-                "Op 4",
-                "Op 5",
-                "Op 6",
-                "Op 7",
-                "Op 8"
+                "😃 concordo fortemente",
+                "🙂 concordo",
+                "😐 neutro",
+                "😟 discordo",
+                "😢 discordo fortemente"
             ],
-            "allows_multiple_answers": true,
-            "required": false
+            "allows_multiple_answers": false,
+            "required": true
         },
         {
-            "text": "Questão com resposta livre.",
+            "text": "3. O bot geralmente apresenta boas sugestões.",
+            "options": [
+                "😃 concordo fortemente",
+                "🙂 concordo",
+                "😐 neutro",
+                "😟 discordo",
+                "😢 discordo fortemente"
+            ],
+            "allows_multiple_answers": false,
+            "required": true
+        },
+        {
+            "text": "4. A resposta é exibida de modo agradável.",
+            "options": [
+                "😃 concordo fortemente",
+                "🙂 concordo",
+                "😐 neutro",
+                "😟 discordo",
+                "😢 discordo fortemente"
+            ],
+            "allows_multiple_answers": false,
+            "required": true
+        },
+        {
+            "text": "5. Você poderá escrever um comentário abaixo sobre a recomendação do bot, se não quiser opinar, basta escrever 'não desejo comentar'.",
             "options": [],
             "allows_multiple_answers": false,
             "required": true
