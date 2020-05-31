@@ -6,13 +6,7 @@ import os
 
 
 def database_connection():
-    connection = psycopg2.connect(
-        user=os.getenv("PG_USER"),
-        password=os.getenv("PG_PASSWORD"),
-        host=os.getenv("PG_HOST"),
-        port=os.getenv("PG_PORT"),
-        database=os.getenv("PG_DATABASE"),
-    )
+    connection = psycopg2.connect(os.environ['DATABASE_URL'])
     cursor = connection.cursor()
     return connection, cursor
 
