@@ -11,6 +11,20 @@ def database_connection():
     return connection, cursor
 
 
+def create_table():
+    SQL_CREATE = """CREATE TABLE IF NOT EXISTS survey_{}(
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE,"""
+    for key, values in _SURVEYS.items():
+        create = SQL_CREATE.format(key)
+        for ind, _ in enumerate(values["questions"]):
+            create += f"\n    question_{ind+1} TEXT,"
+        create += "\n    saved_on TIMESTAMP);"
+        # cria a tabela no banco de dados
+        cursor.execute(create)
+        connection.commit()
+
+
 def load_all_surveys():
     paths = glob.glob("surveys/*.json")
     for path in paths:
@@ -72,3 +86,6 @@ def close_connection():
 _SURVEYS = dict()
 load_all_surveys()
 connection, cursor = database_connection()
+# cria a tabela se não existir para cada survey_{}.json
+create_table()
+
