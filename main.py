@@ -246,7 +246,9 @@ def end(update, context):
                 answer_string,
             )
 
-        context.bot.send_message(update.effective_user.id, "Questionário finalizado!")
+        context.bot.send_message(update.effective_user.id,
+        "Agradeço por ter disponibilizado seu tempo em responder o questionário!"
+        )
         return ConversationHandler.END
 
 
